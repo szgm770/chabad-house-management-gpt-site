@@ -29,7 +29,7 @@ export default function UserProfile() {
         <small>{user?.email || "חשבון מאומת"}</small>
       </div>
       <a
-        href="/signout-with-chatgpt?return_to=/"
+        href="/api/auth/signout"
         target="_top"
         aria-label="יציאה מהמערכת"
         title="יציאה מהמערכת"

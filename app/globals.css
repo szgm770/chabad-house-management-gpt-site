@@ -1,4 +1,7 @@
 @import "tailwindcss";
+
+/* Secure standalone sign-in */
+.login-page{min-height:100dvh;display:grid;place-items:center;padding:24px;background:#f8fafc}.login-card{width:min(100%,430px);padding:36px;border:1px solid #e2e8f0;border-radius:22px;background:#fff;box-shadow:0 20px 55px rgba(15,23,42,.1);text-align:center}.login-mark{display:grid;place-items:center;width:58px;height:58px;margin:0 auto 18px;border-radius:18px;background:#164e3f;color:#fff}.login-mark svg{width:29px;height:29px}.login-card h1{margin:0;color:#0f172a;font-size:1.65rem}.login-card p{margin:10px 0 24px;color:#64748b;font-size:1rem}.google-login{display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:12px;background:#164e3f;color:#fff;font-size:1rem;font-weight:700;text-decoration:none}.google-login:hover{background:#123f34}.login-card small{display:block;margin-top:18px;color:#64748b;font-size:.86rem;line-height:1.6}.login-error{margin:0 0 16px;padding:11px 14px;border-radius:10px;background:#fef2f2;color:#991b1b;font-size:.92rem}
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
 :root {
