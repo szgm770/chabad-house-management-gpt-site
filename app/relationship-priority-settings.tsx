@@ -1,0 +1,7 @@
+"use client";
+import { useEffect,useState } from "react";
+import { Check,Save,Target } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { defaultRelationshipGroups,type RelationshipGroup } from "./relationship-config";
+
+export default function RelationshipPrioritySettings(){const[config,setConfig]=useState<RelationshipGroup[]>(defaultRelationshipGroups),[notice,setNotice]=useState("");useEffect(()=>{fetch("/api/retention?limit=1").then(r=>r.json()).then(data=>data.config&&setConfig(data.config))},[]);async function save(){const response=await fetch("/api/retention",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({config})});setNotice(response.ok?"סדר העדיפויות נשמר":"לא ניתן לשמור את ההגדרה")};return <section className="config-panel relationship-priority-settings"><div className="panel-head"><div><h2>סדר עדיפויות לשימור קשר</h2><p>המספר הנמוך ביותר קובע את הדרגה הראשית כאשר תורם שייך לכמה קבוצות.</p></div><Target/></div>{notice&&<div className="save-notice"><Check/>{notice}</div>}<div className="priority-config-list">{config.map((group,index)=><label key={group.key}><span>{group.label}<small>{group.source==="automatic"?"שיוך אוטומטי":"שיוך ידני"}</small></span><input type="number" min="1" max="99" disabled={group.key==="other"} value={group.rank??""} placeholder="ללא דרגה" onChange={e=>setConfig(items=>items.map((item,i)=>i===index?{...item,rank:e.target.value?Number(e.target.value):null}:item))}/></label>)}</div><Button onClick={()=>void save()}><Save/>שמירת סדר העדיפויות</Button></section>}

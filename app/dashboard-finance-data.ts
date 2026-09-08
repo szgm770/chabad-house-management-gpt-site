@@ -1,0 +1,9 @@
+import { settlementFor, type BankTransaction, type SettlementRule } from "./settlement";
+export type DashboardFinanceRow = BankTransaction & { department?: string | null };
+const round=(n:number)=>Math.round(n*100)/100;
+export function dashboardFinanceSummary(rows:DashboardFinanceRow[],rules:SettlementRule[],departmentNames:string[],today:string,monthsCount=12){
+ const anchor=new Date(`${today.slice(0,7)}-01T12:00:00Z`),keys=Array.from({length:monthsCount},(_,i)=>{const d=new Date(anchor);d.setUTCMonth(d.getUTCMonth()-(monthsCount-1-i));return d.toISOString().slice(0,7)});
+ const departments=new Map(departmentNames.map(name=>[name,{name,income:0,expenses:0,balance:0}])),months=new Map(keys.map(key=>[key,{key,income:0,expenses:0,balance:0}]));
+ for(const row of rows){const actual=settlementFor(row,rules,today).actual;if(!actual||actual>today)continue;const amount=Math.max(0,Number(row.amount||0)),fee=Math.max(0,Number(row.feeAmount||0)),expense=row.movementType==="expense",bank=round(expense?amount+fee:Math.max(0,amount-fee)),name=row.department?.trim()||"ללא מחלקה";if(!departments.has(name))departments.set(name,{name,income:0,expenses:0,balance:0});const d=departments.get(name)!;expense?d.expenses+=bank:d.income+=bank;d.balance=d.income-d.expenses;const m=months.get(actual.slice(0,7));if(m){expense?m.expenses+=bank:m.income+=bank;m.balance=m.income-m.expenses}}
+ const ds=[...departments.values()].map(x=>({...x,income:round(x.income),expenses:round(x.expenses),balance:round(x.balance)})),ms=[...months.values()].map(x=>({...x,income:round(x.income),expenses:round(x.expenses),balance:round(x.balance)}));return{departments:ds,months:ms,totals:ds.reduce((t,x)=>({income:round(t.income+x.income),expenses:round(t.expenses+x.expenses),balance:round(t.balance+x.balance)}),{income:0,expenses:0,balance:0})};
+}

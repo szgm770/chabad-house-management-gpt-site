@@ -1,0 +1,6 @@
+import { desc, eq } from "drizzle-orm";
+import { getDb } from "@/db";
+import { tasks } from "@/db/schema";
+export async function GET(){try{return Response.json({tasks:await getDb().select().from(tasks).orderBy(desc(tasks.id)).limit(200)})}catch(e){return Response.json({error:e instanceof Error?e.message:"שגיאה"},{status:500})}}
+export async function POST(request:Request){try{const p=await request.json() as {title?:string;detail?:string;priority?:string;donorCardId?:number|null;personId?:number|null;dueDate?:string|null};if(!p.title)return Response.json({error:"חובה להזין כותרת"},{status:400});const [task]=await getDb().insert(tasks).values({title:p.title,detail:p.detail||"",priority:p.priority||"בינונית",donorCardId:p.donorCardId||null,personId:p.personId||null,dueDate:p.dueDate||null}).returning();return Response.json({task},{status:201})}catch(e){return Response.json({error:e instanceof Error?e.message:"שגיאה"},{status:500})}}
+export async function PATCH(request:Request){try{const p=await request.json() as {id:number;completed:boolean};await getDb().update(tasks).set({completed:p.completed,completedAt:p.completed?new Date().toISOString():null}).where(eq(tasks.id,p.id));return Response.json({ok:true})}catch(e){return Response.json({error:e instanceof Error?e.message:"שגיאה"},{status:500})}}

@@ -1,0 +1,5 @@
+import { getDb } from "@/db";
+import { appSettings, donations } from "@/db/schema";
+import { dashboardFinanceSummary } from "@/app/dashboard-finance-data";
+import { rulesFromSettings, todayInIsrael } from "@/app/settlement";
+export async function GET(){try{const db=getDb(),[rows,settingRows]=await Promise.all([db.select({amount:donations.amount,feeAmount:donations.feeAmount,currency:donations.currency,movementType:donations.movementType,date:donations.date,paymentMethod:donations.paymentMethod,expectedSettlementDate:donations.expectedSettlementDate,actualSettlementDate:donations.actualSettlementDate,settlementReview:donations.settlementReview,department:donations.department}).from(donations),db.select().from(appSettings)]),settings=Object.fromEntries(settingRows.map(r=>[r.key,r.value]));let names:string[]=[];try{names=Object.keys(JSON.parse(settings.movement_categories||"{}"))}catch{}return Response.json(dashboardFinanceSummary(rows.filter(r=>r.currency==="ILS"),rulesFromSettings(settings),names,todayInIsrael()),{headers:{"cache-control":"private, max-age=30"}})}catch{return Response.json({error:"לא ניתן לטעון כרגע את נתוני הכספים"},{status:500})}}
