@@ -21,7 +21,6 @@ import { clearSettlementCache } from "./settlement-client";
 const MovementDialog = dynamic(() => import("./movement-dialog"));
 const MovementImportExport = dynamic(() => import("./movement-import-export"));
 const BankCashflow = dynamic(() => import("./bank-cashflow"));
-const BankSummary = dynamic(() => import("./bank-cashflow").then((module) => module.BankSummary));
 const TransactionDetail = dynamic(() => import("./transaction-detail"));
 
 export default function MovementCenter() {
@@ -56,7 +55,8 @@ export default function MovementCenter() {
     [notice, setNotice] = useState("");
   async function load(offset = 0, search = query, type = filter, order = sort) {
     const m = await fetch(
-      `/api/donations?limit=50&offset=${offset}&type=${type}&q=${encodeURIComponent(search)}&sort=${order}`,
+      `/api/donations?limit=20&offset=${offset}&type=${type}&q=${encodeURIComponent(search)}&sort=${order}`,
+      { cache: "no-store" },
     );
     if (m.ok) {
       const result = await m.json(),
@@ -181,7 +181,6 @@ export default function MovementCenter() {
       {bank && <BankCashflow />}
       {!bank && (
         <div>
-          <BankSummary />
           <section className="movement-summary" aria-label="סיכום תנועות החודש">
             <article>
               <small>תרומות החודש</small>
@@ -363,18 +362,18 @@ export default function MovementCenter() {
                             }
                           >
                             {row.movementType === "expense" ? "−" : "+"}
-                            {row.amount.toLocaleString("he-IL", {
+                            {Number(row.amount || 0).toLocaleString("he-IL", {
                               style: "currency",
-                              currency: row.currency || "ILS",
+                              currency: /^[A-Z]{3}$/.test(row.currency || "") ? row.currency : "ILS",
                             })}
                           </b>
                           {row.movementType === "donation" &&
                             row.feeAmount > 0 && (
                               <small className="movement-detail">
                                 נטו{" "}
-                                {row.netAmount.toLocaleString("he-IL", {
+                                {Number(row.netAmount || 0).toLocaleString("he-IL", {
                                   style: "currency",
-                                  currency: row.currency || "ILS",
+                                  currency: /^[A-Z]{3}$/.test(row.currency || "") ? row.currency : "ILS",
                                 })}
                               </small>
                             )}
