@@ -5,7 +5,7 @@ export async function proxy(request: NextRequest) {
   // guard is intentional: relying only on a negative matcher caused a redirect
   // loop on some Vercel deployments.
   const pathname = request.nextUrl.pathname;
-  if (pathname === "/login" || pathname.startsWith("/api/auth/")) return NextResponse.next();
+  if (pathname === "/login" || pathname.startsWith("/api/auth/") || pathname.startsWith("/api/webhooks/")) return NextResponse.next();
   const token = request.cookies.get("chabad_session")?.value;
   if (token && await verifySessionToken(token)) return NextResponse.next();
   const login = new URL("/login", request.url); login.searchParams.set("return_to", `${request.nextUrl.pathname}${request.nextUrl.search}`); return NextResponse.redirect(login);
