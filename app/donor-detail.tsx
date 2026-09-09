@@ -28,7 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { EditableDonor } from "./donor-form-dialog";
-import { formatHebrewDate } from "./hebrew-date";
+import { formatCivilDate, formatHebrewDate } from "./hebrew-date";
 import {
   getCachedDonorSummary,
   invalidateDonorSummary,
@@ -118,12 +118,7 @@ type Summary = {
 type Tab = "overview" | "donations" | "engagements";
 const money = (value: number, currency = "ILS") =>
   Number(value || 0).toLocaleString("he-IL", { style: "currency", currency });
-const civil = (value: string) =>
-  new Intl.DateTimeFormat("he-IL", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(value.includes("T") ? value : `${value}T12:00:00`));
+const civil = formatCivilDate;
 const dayLetter = (value: number) =>
   [
     "",
