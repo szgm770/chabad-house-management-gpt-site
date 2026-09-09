@@ -17,9 +17,37 @@ export function hebrewNumeral(input:number,{year=false}:{year?:boolean}={}){
   return result?punctuation(result):"";
 }
 
+export function parseAppDate(value:string|Date){
+  if(value instanceof Date)return Number.isNaN(value.getTime())?null:value;
+  const raw=String(value||"").trim();
+  if(!raw)return null;
+  const iso=raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  const local=raw.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})/);
+  const normalized=iso
+    ? `${iso[1]}-${iso[2].padStart(2,"0")}-${iso[3].padStart(2,"0")}`
+    : local
+      ? `${local[3]}-${local[2].padStart(2,"0")}-${local[1].padStart(2,"0")}`
+      : raw;
+  const date=new Date(normalized.includes("T")?normalized:`${normalized}T12:00:00`);
+  return Number.isNaN(date.getTime())?null:date;
+}
+
+export function normalizeAppDate(value:string|Date){
+  const date=parseAppDate(value);
+  if(!date)return "";
+  const year=date.getFullYear(),month=String(date.getMonth()+1).padStart(2,"0"),day=String(date.getDate()).padStart(2,"0");
+  return `${year}-${month}-${day}`;
+}
+
+export function formatCivilDate(value:string|Date){
+  const date=parseAppDate(value);
+  if(!date)return "תאריך לא זמין";
+  return new Intl.DateTimeFormat("he-IL",{day:"numeric",month:"long",year:"numeric"}).format(date);
+}
+
 export function formatHebrewDate(value:string|Date){
-  const date=value instanceof Date?value:new Date(`${value}T12:00:00`);
-  if(Number.isNaN(date.getTime()))return "";
+  const date=parseAppDate(value);
+  if(!date)return "תאריך לא זמין";
   const parts=new Intl.DateTimeFormat("he-IL-u-ca-hebrew",{day:"numeric",month:"long",year:"numeric"}).formatToParts(date);
   const day=Number(parts.find(part=>part.type==="day")?.value||0);
   const month=parts.find(part=>part.type==="month")?.value||"";
