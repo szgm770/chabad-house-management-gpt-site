@@ -1,3 +1,4 @@
+// Central webhook verification shared by all payment providers.
 const nedarimIps = new Set(["18.196.146.117", "18.194.219.73"]);
 
 function forwardedIp(request: Request) {
