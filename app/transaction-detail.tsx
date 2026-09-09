@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatHebrewDate } from "./hebrew-date";
+import { formatCivilDate, formatHebrewDate } from "./hebrew-date";
 import type { MovementRecord } from "./movement-dialog";
 import TransactionSettlement from "./transaction-settlement";
 type Props = {
@@ -58,11 +58,7 @@ export default function TransactionDetail({
   const reference = String(
       raw.receiptNumber || raw.Receipt || raw.asmachta || raw.reference || "",
     ),
-    civil = new Intl.DateTimeFormat("he-IL", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }).format(new Date(`${transaction.date}T12:00:00`)),
+    civil = formatCivilDate(transaction.date),
     returnUrl =
       typeof window !== "undefined"
         ? window.location.pathname + window.location.search
