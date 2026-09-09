@@ -152,7 +152,7 @@ export default function DonorCenter() {
   const fileRef = useRef<HTMLInputElement>(null);
   async function load(offset = 0, search = query, order = sort) {
     if (!offset) setLoading(true);
-    const r = await fetch(`/api/donors?view=list&limit=50&offset=${offset}&q=${encodeURIComponent(search)}&sort=${encodeURIComponent(order)}`);
+    const r = await fetch(`/api/donors?view=list&limit=50&offset=${offset}&q=${encodeURIComponent(search)}&sort=${encodeURIComponent(order)}`, { cache: "no-store" });
     if (r.ok) {
       const j = await r.json();
       setRecords((current) =>
