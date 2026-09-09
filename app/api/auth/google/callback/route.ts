@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
     const profile = await profileResponse.json() as { email?: string; name?: string; email_verified?: boolean };
     if (!profile.email || !profile.email_verified || !emailIsAllowed(profile.email)) return fail("not_allowed");
     const session = await createSessionToken({ email: profile.email, name: profile.name || null, exp: Date.now() + 604800000 });
-    const response = NextResponse.redirect(new URL(jar.get("oauth_return")?.value || "/", origin));
+    const storedReturnTo = jar.get("oauth_return")?.value || "/";
+    const response = NextResponse.redirect(new URL(storedReturnTo.startsWith("/") && !storedReturnTo.startsWith("//") && !storedReturnTo.startsWith("/login") ? storedReturnTo : "/", origin));
     response.cookies.set("chabad_session", session, { httpOnly: true, secure: true, sameSite: "lax", maxAge: 604800, path: "/" });
     response.cookies.delete("oauth_state"); response.cookies.delete("oauth_return"); return response;
   } catch { return fail("oauth"); }
