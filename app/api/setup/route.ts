@@ -3,14 +3,11 @@ import path from "node:path";
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { getDb } from "@/db";
 
-type D1Client = {
-  exec: (sql: string) => Promise<{ results?: Array<{ id?: string }> }>;
-};
+type D1Client = { exec: (sql: string) => Promise<{ results?: Array<{ id?: string }> }> };
 
 export async function POST() {
   const user = await getChatGPTUser();
   if (!user) return Response.json({ error: "נדרשת כניסה למערכת." }, { status: 401 });
-
   try {
     const client = (getDb() as unknown as { $client: D1Client }).$client;
     await client.exec("CREATE TABLE IF NOT EXISTS __app_migration_steps (migration_id TEXT NOT NULL, step_number INTEGER NOT NULL, applied_at TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (migration_id, step_number))");
@@ -19,7 +16,6 @@ export async function POST() {
     const directory = path.join(process.cwd(), "drizzle");
     const files = (await readdir(directory)).filter((file) => file.endsWith(".sql")).sort();
     let appliedCount = 0;
-
     for (const file of files) {
       const migrationId = file.slice(0, -4);
       const sql = await readFile(path.join(directory, file), "utf8");
@@ -27,18 +23,20 @@ export async function POST() {
       for (const [index, step] of steps.entries()) {
         const key = `${migrationId}:${index}`;
         if (appliedSteps.has(key)) continue;
-        await client.exec(step);
+        try {
+          await client.exec(step);
+        } catch (error) {
+          const message = error instanceof Error ? error.message.toLowerCase() : "";
+          const safeAlreadyApplied = message.includes("duplicate column name") || message.includes("already exists");
+          if (!safeAlreadyApplied) throw error;
+        }
         await client.exec(`INSERT INTO __app_migration_steps (migration_id, step_number) VALUES (${quote(migrationId)}, ${index})`);
         appliedCount++;
       }
     }
-
-    return Response.json({ ok: true, message: appliedCount ? `המסד אותחל בהצלחה: ${appliedCount} שלבים הושלמו.` : "המסד כבר מוכן לשימוש." });
-  } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "לא ניתן לאתחל את מסד הנתונים." }, { status: 500 });
+    return Response.json({ ok: true, message: appliedCount ? `מסד הנתונים עודכן בהצלחה: ${appliedCount} שלבים הושלמו.` : "מסד הנתונים כבר מוכן לשימוש." });
+  } catch {
+    return Response.json({ error: "לא ניתן להשלים את עדכון מסד הנתונים כרגע. נסה שוב." }, { status: 500 });
   }
 }
-
-function quote(value: string) {
-  return `'${value.replaceAll("'", "''")}'`;
-}
+function quote(value: string) { return `'${value.replaceAll("'", "''")}'`; }
