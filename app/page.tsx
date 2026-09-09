@@ -83,6 +83,7 @@ const MovementCenter = dynamic(() => import("./movement-center"), { loading: Vie
 const ReviewCenter = dynamic(() => import("./review-center"), { loading: ViewLoading });
 const RetentionCenter = dynamic(() => import("./donor-workflows").then((module) => module.RetentionCenter), { loading: ViewLoading });
 const DuplicateCenter = dynamic(() => import("./donor-workflows").then((module) => module.DuplicateCenter), { loading: ViewLoading });
+const UpdatesCenter = dynamic(() => import("./updates-center"), { loading: ViewLoading });
 
 type View =
   | "dashboard"
@@ -94,6 +95,7 @@ type View =
   | "expenses"
   | "reviews"
   | "attention"
+  | "updates"
   | "settings"
   | "advanced";
 const titles: Record<View, [string, string]> = {
@@ -106,6 +108,7 @@ const titles: Record<View, [string, string]> = {
   expenses: ["הוצאות", "תנועות הוצאה ותזרים"],
   reviews: ["סקירות פעילות", "הכנת סקירה ומעקב משלוחים"],
   attention: ["דורש טיפול", "כל המשימות החשובות במקום אחד"],
+  updates: ["עדכונים", "אירועים מהמערכות המחוברות"],
   settings: ["הגדרות", "ניהול המערכת, העדפות וחיבורים"],
   advanced: ["הגדרות", "ניהול המערכת, העדפות וחיבורים"],
 };
@@ -124,6 +127,7 @@ const nav = [
   { id: "movements" as View, label: "תנועות", icon: HandCoins },
   { id: "reviews" as View, label: "סקירות פעילות", icon: FileText },
   { id: "attention" as View, label: "דורש טיפול", icon: AlertCircle },
+  { id: "updates" as View, label: "עדכונים", icon: Bell },
   { id: "settings" as View, label: "הגדרות", icon: Settings },
 ];
 const donors = [
@@ -2013,6 +2017,7 @@ function ViewContent({ view }: { view: View }) {
   if (view === "duplicates") return <DuplicateCenter />;
   if (view === "reviews") return <ReviewCenter />;
   if (view === "attention") return <AttentionCenter />;
+  if (view === "updates") return <UpdatesCenter />;
   return <SettingsHub />;
 }
 export default function Home() {
