@@ -642,6 +642,7 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
                   <div>
                     <small>מקור</small>
                     <b>{gift.source === "manual" ? "ידני" : gift.source}</b>
+                    <em>לחץ לצפייה בפרטי התרומה</em>
                   </div>
                   {gift.reason && <p>{gift.reason}</p>}
                 </article>
