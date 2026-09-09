@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   ArrowRight,
   CalendarHeart,
@@ -26,17 +27,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import DonorFormDialog, { EditableDonor } from "./donor-form-dialog";
-import MovementDialog from "./movement-dialog";
-import AddOrLinkPerson from "./add-or-link-person";
-import TransactionDetail from "./transaction-detail";
-import DonorRelationshipPanel from "./donor-relationship-panel";
+import type { EditableDonor } from "./donor-form-dialog";
 import { formatHebrewDate } from "./hebrew-date";
 import {
   getCachedDonorSummary,
   invalidateDonorSummary,
   prefetchDonorSummary,
 } from "./donor-detail-cache";
+
+const DonorFormDialog = dynamic(() => import("./donor-form-dialog"));
+const MovementDialog = dynamic(() => import("./movement-dialog"));
+const AddOrLinkPerson = dynamic(() => import("./add-or-link-person"));
+const TransactionDetail = dynamic(() => import("./transaction-detail"));
+const DonorRelationshipPanel = dynamic(() => import("./donor-relationship-panel"));
 
 type SpecialDate = {
   id: number;
@@ -713,7 +716,7 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
           )}
         </section>
       )}
-      <DonorFormDialog
+      {editOpen && <DonorFormDialog
         open={editOpen}
         onOpenChange={setEditOpen}
         donor={donor}
@@ -721,14 +724,14 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
           setNotice("פרטי הכרטיס עודכנו");
           await loadSummary(true);
         }}
-      />
-      <MovementDialog
+      />}
+      {donationOpen && <MovementDialog
         open={donationOpen}
         onOpenChange={setDonationOpen}
         presetDonor={{ id: donor.id, name: donor.name }}
         people={people}
         onSaved={refreshAfterDonation}
-      />
+      />}
       <EngagementDialog
         open={engagementOpen}
         onOpenChange={setEngagementOpen}
@@ -740,7 +743,7 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
           await Promise.all([loadSummary(true), loadEngagements()]);
         }}
       />
-      <AddOrLinkPerson
+      {personOpen && <AddOrLinkPerson
         open={personOpen}
         onOpenChange={setPersonOpen}
         donorCardId={donor.id}
@@ -748,9 +751,9 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
           setNotice("האדם קושר לכרטיס");
           await loadSummary(true);
         }}
-      />
+      />}
       <RecurringDialog open={recurringOpen} onOpenChange={setRecurringOpen} donorId={donor.id} people={people} onSaved={async()=>{setNotice("הוראת הקבע נשמרה");await loadSummary(true)}}/>
-      <TransactionDetail
+      {selectedGift && <TransactionDetail
         transaction={selectedGift}
         personName={
           selectedGift?.personId
@@ -760,7 +763,7 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
         onOpenChange={(value) => {
           if (!value) setSelectedGift(null);
         }}
-      />
+      />}
     </main>
   );
 }
