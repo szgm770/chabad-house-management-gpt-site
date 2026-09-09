@@ -1,6 +1,7 @@
 // @ts-nocheck -- legacy transaction view, validated through runtime tests
 "use client";
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   Check,
@@ -12,13 +13,16 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import MovementDialog, { MovementRecord } from "./movement-dialog";
-import MovementImportExport from "./movement-import-export";
+import type { MovementRecord } from "./movement-dialog";
 import { formatHebrewDate } from "./hebrew-date";
 import { prefetchDonorSummary } from "./donor-detail-cache";
-import BankCashflow, { BankSummary } from "./bank-cashflow";
-import TransactionDetail from "./transaction-detail";
 import { clearSettlementCache } from "./settlement-client";
+
+const MovementDialog = dynamic(() => import("./movement-dialog"));
+const MovementImportExport = dynamic(() => import("./movement-import-export"));
+const BankCashflow = dynamic(() => import("./bank-cashflow"));
+const BankSummary = dynamic(() => import("./bank-cashflow").then((module) => module.BankSummary));
+const TransactionDetail = dynamic(() => import("./transaction-detail"));
 
 const civilDate = (value: string) =>
   new Intl.DateTimeFormat("he-IL", {
@@ -458,7 +462,7 @@ export default function MovementCenter() {
               </div>
             )}
           </section>
-          <MovementDialog
+          {open && <MovementDialog
             open={open}
             onOpenChange={setOpen}
             movement={editing}
@@ -468,14 +472,14 @@ export default function MovementCenter() {
               refreshFinancialData();
               await load();
             }}
-          />
-          <TransactionDetail
+          />}
+          {selected && <TransactionDetail
             transaction={selected}
             personName={selected?.personName || undefined}
             onOpenChange={(value) => {
               if (!value) setSelected(null);
             }}
-          />
+          />}
         </div>
       )}
     </div>
