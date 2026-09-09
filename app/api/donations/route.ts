@@ -51,7 +51,30 @@ export async function GET(request: Request) {
     const [rows, countRows, summaryRows] = await Promise.all([
       db
         .select({
-          donation: donations,
+          donation: {
+            id: donations.id,
+            donorId: donations.donorId,
+            personId: donations.personId,
+            donorName: donations.donorName,
+            amount: donations.amount,
+            currency: donations.currency,
+            date: donations.date,
+            paymentMethod: donations.paymentMethod,
+            purpose: donations.purpose,
+            reason: donations.reason,
+            feeAmount: donations.feeAmount,
+            netAmount: donations.netAmount,
+            expectedSettlementDate: donations.expectedSettlementDate,
+            actualSettlementDate: donations.actualSettlementDate,
+            settlementReview: donations.settlementReview,
+            isRecurring: donations.isRecurring,
+            externalId: donations.externalId,
+            source: donations.source,
+            movementType: donations.movementType,
+            matchStatus: donations.matchStatus,
+            department: donations.department,
+            subcategory: donations.subcategory,
+          },
           personName: people.fullName,
           cardName: donorCards.cardName,
         })
