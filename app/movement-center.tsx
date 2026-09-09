@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MovementRecord } from "./movement-dialog";
-import { formatHebrewDate } from "./hebrew-date";
+import { formatCivilDate, formatHebrewDate } from "./hebrew-date";
 import { prefetchDonorSummary } from "./donor-detail-cache";
 import { clearSettlementCache } from "./settlement-client";
 
@@ -24,12 +24,6 @@ const BankCashflow = dynamic(() => import("./bank-cashflow"));
 const BankSummary = dynamic(() => import("./bank-cashflow").then((module) => module.BankSummary));
 const TransactionDetail = dynamic(() => import("./transaction-detail"));
 
-const civilDate = (value: string) =>
-  new Intl.DateTimeFormat("he-IL", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(`${value}T12:00:00`));
 export default function MovementCenter() {
   const [bank, setBankState] = useState(false);
   useEffect(() => {
