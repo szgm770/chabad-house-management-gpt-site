@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   AlertCircle,
   BarChart3,
@@ -68,17 +69,20 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import AttentionCenter from "./attention-center";
-import SettingsHub from "./settings-hub";
 import FeedbackLauncher from "./feedback-launcher";
-import DonorCenter from "./donor-center";
-import MovementCenter from "./movement-center";
-import ReviewCenter from "./review-center";
 import QuickActions from "./quick-actions";
 import DashboardCenter from "./dashboard-center";
-import { DuplicateCenter, RetentionCenter } from "./donor-workflows";
 import { formatHebrewDate } from "./hebrew-date";
 import UserProfile from "./user-profile";
+
+const ViewLoading = () => <div className="page-loading" aria-label="טוען"><i /><i /><i /></div>;
+const AttentionCenter = dynamic(() => import("./attention-center"), { loading: ViewLoading });
+const SettingsHub = dynamic(() => import("./settings-hub"), { loading: ViewLoading });
+const DonorCenter = dynamic(() => import("./donor-center"), { loading: ViewLoading });
+const MovementCenter = dynamic(() => import("./movement-center"), { loading: ViewLoading });
+const ReviewCenter = dynamic(() => import("./review-center"), { loading: ViewLoading });
+const RetentionCenter = dynamic(() => import("./donor-workflows").then((module) => module.RetentionCenter), { loading: ViewLoading });
+const DuplicateCenter = dynamic(() => import("./donor-workflows").then((module) => module.DuplicateCenter), { loading: ViewLoading });
 
 type View =
   | "dashboard"
