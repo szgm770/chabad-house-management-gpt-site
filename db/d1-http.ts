@@ -7,8 +7,39 @@ function required(name: string): string {
   return value;
 }
 
+let databaseIdPromise: Promise<string> | undefined;
+
+/**
+ * Vercel needs D1's UUID for query calls. To make first-time setup less
+ * error-prone we also accept the human-readable D1 database name and resolve
+ * it once through Cloudflare's API.
+ */
+async function databaseId(): Promise<string> {
+  const explicitId = process.env.CLOUDFLARE_D1_DATABASE_ID?.trim();
+  if (explicitId) return explicitId;
+
+  const name = process.env.CLOUDFLARE_D1_DATABASE_NAME?.trim();
+  if (!name) {
+    throw new Error("חסרה הגדרת המסד. יש להוסיף CLOUDFLARE_D1_DATABASE_ID או CLOUDFLARE_D1_DATABASE_NAME בהגדרות הסביבה של Vercel.");
+  }
+
+  databaseIdPromise ??= (async () => {
+    const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${required("CLOUDFLARE_ACCOUNT_ID")}/d1/database?name=${encodeURIComponent(name)}`, {
+      headers: { authorization: `Bearer ${required("CLOUDFLARE_D1_API_TOKEN")}` },
+      cache: "no-store",
+    });
+    const payload = await response.json() as { success?: boolean; errors?: Array<{ message?: string }>; result?: Array<{ uuid?: string; name?: string }> };
+    const found = payload.result?.find((database) => database.name === name)?.uuid;
+    if (!response.ok || !payload.success || !found) {
+      throw new Error(payload.errors?.map((item) => item.message).filter(Boolean).join(", ") || `לא נמצא מסד הנתונים ${name}.`);
+    }
+    return found;
+  })();
+  return databaseIdPromise;
+}
+
 async function execute(sql: string, params: unknown[]): Promise<D1Result> {
-  const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${required("CLOUDFLARE_ACCOUNT_ID")}/d1/database/${required("CLOUDFLARE_D1_DATABASE_ID")}/query`, {
+  const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${required("CLOUDFLARE_ACCOUNT_ID")}/d1/database/${await databaseId()}/query`, {
     method: "POST",
     headers: { authorization: `Bearer ${required("CLOUDFLARE_D1_API_TOKEN")}`, "content-type": "application/json" },
     body: JSON.stringify({ sql, params }),
