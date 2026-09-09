@@ -7910,3 +7910,68 @@ td:first-child {
     height: 250px;
   }
 }
+
+.page-loading {
+  display: grid;
+  gap: 12px;
+  padding: 8px 0;
+}
+.page-loading i {
+  display: block;
+  height: 110px;
+  border-radius: 20px;
+  background: linear-gradient(90deg, #edf2ef 25%, #f8faf9 50%, #edf2ef 75%);
+  background-size: 200% 100%;
+  animation: skeleton 1.25s infinite linear;
+}
+.updates-center { display: grid; gap: 18px; }
+.updates-intro {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: linear-gradient(135deg, #f5faf7, #fff);
+}
+.updates-intro > span, .update-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  border-radius: 16px;
+  color: #176248;
+  background: #e6f3ed;
+}
+.updates-intro h2 { margin: 0 0 4px; font-size: 1.35rem; }
+.updates-intro p { margin: 0; color: var(--muted-foreground); }
+.updates-list { display: grid; gap: 10px; }
+.updates-list article {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) minmax(140px, auto) minmax(170px, auto) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+}
+.update-main { display: grid; gap: 6px; }
+.update-main > div { display: flex; align-items: center; gap: 8px; }
+.update-main a { display: flex; align-items: center; gap: 6px; color: #175b45; font-weight: 700; }
+.update-main a svg, .update-date > svg { width: 17px; height: 17px; }
+.update-main small, .update-amount small, .update-date small { color: var(--muted-foreground); }
+.update-amount, .update-date, .update-source { display: grid; gap: 4px; }
+.update-amount strong { font-size: 1.1rem; color: #155f46; }
+.update-date { grid-template-columns: auto 1fr; align-items: center; }
+.update-date span { display: grid; gap: 3px; }
+.update-source { justify-items: end; }
+.update-source span { font-size: .78rem; color: var(--muted-foreground); }
+@media (max-width: 760px) {
+  .updates-intro { align-items: flex-start; padding: 18px; }
+  .updates-list article { grid-template-columns: auto 1fr; gap: 12px; }
+  .update-amount, .update-date, .update-source { grid-column: 2; }
+  .update-source { justify-items: start; }
+}
+
