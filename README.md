@@ -11,7 +11,7 @@
 - `ALLOWED_EMAILS` — כתובות Google מורשות, מופרדות בפסיקים.
 - `GOOGLE_CLIENT_ID` ו־`GOOGLE_CLIENT_SECRET` — פרטי OAuth מ־Google Cloud.
 - `CLOUDFLARE_ACCOUNT_ID` — מזהה חשבון Cloudflare שמחזיק את D1.
-- `CLOUDFLARE_D1_DATABASE_ID` — מזהה מסד D1 של האתר.
+- `CLOUDFLARE_D1_DATABASE_ID` — מזהה מסד D1 של האתר. אפשר לחלופין להשתמש ב־`CLOUDFLARE_D1_DATABASE_NAME` עם שם המסד, למשל `chabad-bs-production`.
 - `CLOUDFLARE_D1_API_TOKEN` — אסימון שרת עם הרשאת D1 Edit למסד בלבד.
 
 ב־Google Cloud יש להוסיף Authorized redirect URI:
