@@ -223,7 +223,7 @@ export default function MovementCenter() {
             <div className="panel-head">
               <div>
                 <h2>כל התנועות</h2>
-                <p>הכנסות, הוצאות ותנועות שנקלטו מהאינטגרציות</p>
+                <p>הכנסות, הוצאות ותנועות שנקלטו מהא��נטגרציות</p>
               </div>
               <div className="movement-head-actions">
                 <MovementImportExport
@@ -379,9 +379,9 @@ export default function MovementCenter() {
                             )}
                         </td>
                         <td>
-                          {formatHebrewDate(row.date)}
+                            {formatHebrewDate(row.date)}
                           <small className="movement-detail">
-                            {civilDate(row.date)}
+                            {formatCivilDate(row.date)}
                           </small>
                         </td>
                         <td>
