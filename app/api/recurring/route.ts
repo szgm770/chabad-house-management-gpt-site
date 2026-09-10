@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { auditLog, donorCards, people, recurringCommitments } from "@/db/schema";
+import { appSettings, auditLog, donations, donorCards, people, recurringCommitments } from "@/db/schema";
+import { bankRecurringFees } from "@/app/finance";
 
 function endDate(start: string, months?: number | null) {
   if (!months) return null;
@@ -27,6 +28,12 @@ export async function POST(request: Request) {
     if (!donorCardId || amount <= 0 || !startDate || expectedDay < 1 || expectedDay > 31) return Response.json({ error: "חסרים פרטי הוראת קבע תקינים" }, { status: 400 });
     const db = getDb();
     const [item] = await db.insert(recurringCommitments).values({ donorCardId, personId: body.personId ? Number(body.personId) : null, amount, currency: String(body.currency || "ILS"), paymentMethod: String(body.paymentMethod || "אחר"), startDate, durationMonths, expectedDay, endDate: endDate(startDate, durationMonths), status: "active", source: String(body.source || "manual"), externalId: body.externalId ? String(body.externalId) : null, rawPayload: JSON.stringify(body.rawPayload || {}) }).returning();
+    const method=String(body.paymentMethod||"");
+    if((method.includes("הוראת קבע")||method.toLowerCase().includes("bank direct debit"))&&String(body.source||"manual")==="manual"){
+      const settings=Object.fromEntries((await db.select().from(appSettings)).map(row=>[row.key,row.value]));
+      const fee=bankRecurringFees(settings).setup;
+      await db.insert(donations).values({donorName:"עמלת הקמת הוראת קבע בנקאית",amount:fee,currency:String(body.currency||"ILS"),date:startDate,paymentMethod:"העברה בנקאית",purpose:"עמלת בנק",reason:`הקמת הוראת קבע לכרטיס ${donorCardId}`,feePercentage:0,feeAmount:0,netAmount:fee,movementType:"expense",department:"עמלות בנק",subcategory:"הקמת הוראת קבע",source:"system",externalId:`bank-recurring-setup:${item.id}`});
+    }
     await db.update(donorCards).set({ recurringStatus: "ACTIVE", recurringAmount: amount }).where(eq(donorCards.id, donorCardId));
     await db.insert(auditLog).values({ action: "recurring_created", entityType: "recurring", entityId: String(item.id), details: JSON.stringify({ donorCardId }) });
     return Response.json({ recurring: item }, { status: 201 });
