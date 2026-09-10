@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import type { EditableDonor } from "./donor-form-dialog";
 import { formatCivilDate, formatHebrewDate } from "./hebrew-date";
+import "./donor-detail-status.css";
 import {
   getCachedDonorSummary,
   invalidateDonorSummary,
