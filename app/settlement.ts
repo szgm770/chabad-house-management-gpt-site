@@ -1,30 +1,16 @@
 export type SettlementRule = { method: string; mode: "same" | "days" | "monthly" | "next_month" | "manual"; day: number };
-export const paymentMethods = ["אשראי", "ביט", "העברה בנקאית", "הוראת קבע", "מזומן", "צ׳ק", "פייבוקס"];
+export const paymentMethods = ["אשראי", "ביט", "העברה בנקאית", "הוראת קבע בנקאית", "הוראת קבע", "מזומן", "צ׳ק", "פייבוקס"];
 export function rulesFromSettings(settings: Record<string, string>): SettlementRule[] {
-  // Single source of truth: the fixed day-of-month fields configured in the
-  // finance settings panel. A day of 1-31 credits the money on that day of the
-  // month (next occurrence); anything else means no automatic forecast.
+  if (settings.settlement_rules) { try { return JSON.parse(settings.settlement_rules); } catch {} }
+  // No assumed settlement dates: only migrate explicit existing configuration.
   return paymentMethods.map(method => {
-    const key = method === "אשראי" ? "credit_settlement_day" : method === "ביט" ? "bit_settlement_day" : method === "הוראת קבע" ? "bank_recurring_day" : "";
+    const key = method === "אשראי" ? "credit_settlement_day" : method === "ביט" ? "bit_settlement_day" : method.includes("הוראת קבע") ? "bank_recurring_day" : "";
     const day = Number(settings[key]);
     return { method, mode: key && day >= 1 && day <= 31 ? "monthly" : "manual", day: day || 1 };
   });
 }
 export function validDate(date: unknown): date is string {
   return typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && !isNaN(Date.parse(date)) && new Date(date).toISOString().slice(0,10) === date;
-}
-// Coerce stored dates to zero-padded ISO. Imports and legacy rows sometimes hold
-// "2026-9-8" or Israeli "8/9/2026"; without this, string range/startsWith checks
-// drop them from month/year views while "all" (unfiltered) still shows them.
-export function normalizeDate(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(trimmed);
-  if (m) { const iso = `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`; return validDate(iso) ? iso : null; }
-  m = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/.exec(trimmed);
-  if (m) { const iso = `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`; return validDate(iso) ? iso : null; }
-  return validDate(trimmed) ? trimmed : null;
 }
 export function expectedDate(date: string, method: string, rules: SettlementRule[]): string | null {
   if (!validDate(date)) return null;
@@ -66,10 +52,9 @@ export function monthlyBankSummary(rows: BankTransaction[], rules: SettlementRul
 
 export type FinancePeriod = "month" | "year" | "all";
 export function periodContains(date: string | null | undefined, period: FinancePeriod, anchor: string) {
+  if (!date) return false;
   if (period === "all") return true;
-  const normalized = normalizeDate(date);
-  if (!normalized) return false;
-  return normalized.startsWith(period === "year" ? anchor.slice(0, 4) : anchor.slice(0, 7));
+  return date.startsWith(period === "year" ? anchor.slice(0, 4) : anchor.slice(0, 7));
 }
 export function bankSummaryForPeriod(rows: BankTransaction[], rules: SettlementRule[], period: FinancePeriod, anchor: string, today = todayInIsrael()) {
   const result = { gross:0, net:0, planned:0, actual:0, pending:0, overdue:0, unplanned:0 };
