@@ -109,11 +109,23 @@ type Stats = {
   average: number;
   lastDate: string | null;
 };
+type RecurringCommitment = {
+  id: number;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  startDate: string;
+  endDate: string | null;
+  expectedDay: number;
+  status: string;
+  updatedAt: string;
+};
 type Summary = {
   donor: Donor;
   people: Person[];
   stats: Stats;
   trend: Array<{ month: string; amount: number; count: number }>;
+  recurring: RecurringCommitment[];
 };
 type Tab = "overview" | "donations" | "engagements";
 const money = (value: number, currency = "ILS") =>
@@ -310,7 +322,7 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
       </main>
     );
   if (!data) return <DonorDetailSkeleton />;
-  const { donor, people, stats, trend } = data,
+  const { donor, people, stats, trend, recurring = [] } = data,
     legacy: Person = {
       id: 0,
       fullName: donor.name,
@@ -325,7 +337,10 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
       notes: donor.notes,
       specialDates: (donor.specialDates || []) as SpecialDate[],
     },
-    shownPeople = people.length ? people : [legacy];
+    shownPeople = people.length ? people : [legacy],
+    activeRecurring = recurring.filter((item) => item.status === "active"),
+    lastStoppedRecurring = recurring.find((item) => item.status !== "active"),
+    hasActiveRecurring = activeRecurring.length > 0 || donor.recurringStatus === "ACTIVE";
   const closeDetail = () => {
     const fallback =
       new URLSearchParams(window.location.search).get("return") ||
@@ -363,12 +378,12 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
               <span>{donor.status || "פעיל"}</span>
               <span
                 className={
-                  donor.recurringStatus && donor.recurringStatus !== "NONE"
+                  hasActiveRecurring
                     ? "active"
                     : "muted"
                 }
               >
-                {donor.recurringStatus && donor.recurringStatus !== "NONE"
+                {hasActiveRecurring
                   ? "הוראת קבע פעילה"
                   : "ללא הוראת קבע"}
               </span>
@@ -456,6 +471,34 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
             </div>
           </section>
           <div className="overview-side">
+            {(activeRecurring.length > 0 || lastStoppedRecurring) && (
+              <section className={`detail-card recurring-status-card ${activeRecurring.length ? "is-active" : "is-ended"}`}>
+                <div className="recurring-status-head">
+                  <span><Repeat2 /></span>
+                  <div>
+                    <small>הוראות קבע</small>
+                    <h2>{activeRecurring.length ? "הוראת קבע פעילה" : "הוראת הקבע הופסקה"}</h2>
+                  </div>
+                </div>
+                {activeRecurring.map((item) => (
+                  <div className="recurring-status-line" key={item.id}>
+                    <b>{money(item.amount, item.currency || "ILS")} לחודש</b>
+                    <span>חיוב צפוי ביום {item.expectedDay} · התחלה {civil(item.startDate)}</span>
+                  </div>
+                ))}
+                {!activeRecurring.length && lastStoppedRecurring && (
+                  <div className="recurring-status-line">
+                    <b>{money(lastStoppedRecurring.amount, lastStoppedRecurring.currency || "ILS")} לחודש</b>
+                    <span>
+                      הופסקה בתאריך {civil(lastStoppedRecurring.endDate || lastStoppedRecurring.updatedAt)}
+                    </span>
+                  </div>
+                )}
+                <button className="detail-text-action" onClick={() => setRecurringOpen(true)}>
+                  {activeRecurring.length ? "ניהול הוראת הקבע" : "הקמת הוראת קבע חדשה"}
+                </button>
+              </section>
+            )}
             <section className="detail-card">
               <div className="detail-card-title">
                 <div>
@@ -480,8 +523,10 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
                 <div>
                   <span>הוראת קבע נוכחית</span>
                   <b>
-                    {donor.recurringAmount
-                      ? money(donor.recurringAmount)
+                    {activeRecurring.length
+                      ? activeRecurring.map((item) => money(item.amount, item.currency || "ILS")).join(" + ")
+                      : donor.recurringAmount
+                        ? money(donor.recurringAmount)
                       : "אין"}
                   </b>
                 </div>
