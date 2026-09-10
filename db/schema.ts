@@ -265,6 +265,23 @@ export const auditLog = sqliteTable("audit_log", {
     .default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const bankReconciliations = sqliteTable(
+  "bank_reconciliations",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    date: text("date").notNull(),
+    currency: text("currency").notNull().default("ILS"),
+    expectedBalance: real("expected_balance").notNull(),
+    actualBalance: real("actual_balance").notNull(),
+    difference: real("difference").notNull(),
+    matched: integer("matched", { mode: "boolean" }).notNull().default(false),
+    note: text("note").notNull().default(""),
+    verifiedBy: text("verified_by").notNull().default(""),
+    verifiedAt: text("verified_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [uniqueIndex("idx_bank_reconciliation_date_currency").on(table.date, table.currency)],
+);
+
 export const recurringCommitments = sqliteTable(
   "recurring_commitments",
   {
