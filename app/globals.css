@@ -8023,3 +8023,40 @@ td:first-child {
  .settings-clean .data-maintenance,.settings-clean .backup-panel{display:flex!important;flex-direction:column;width:100%}.settings-clean .data-maintenance>p,.settings-clean .backup-panel>p{display:block!important;line-height:1.55}
 }
 @media(max-width:380px){.settings-clean .settings-topics button{grid-template-columns:40px minmax(0,1fr) 18px;padding-inline:9px}.settings-clean .settings-topics button b{font-size:15px}.settings-clean .brand-editor{grid-template-columns:56px minmax(0,1fr);gap:10px}.settings-clean .config-panel{border-radius:11px}.settings-clean .panel-head,.settings-clean .config-grid,.settings-clean .toggle-list,.settlement-settings .bank-stack,.settings-clean .category-list,.settings-clean .permissions-mobile{padding-inline:11px}}
+
+/* Critical correction: every settings card stacks vertically. */
+.settings-clean .settings-topic>.config-panel,
+.settings-clean .settings-topic>.user-access-settings>.config-panel,
+.settings-clean .settings-topic>.data-settings-stack>.config-panel,
+.settings-clean .settings-complete>.config-panel{
+ display:flex!important;
+ flex-direction:column!important;
+ align-items:stretch!important;
+ justify-content:flex-start!important;
+ width:100%!important;
+ max-width:100%!important;
+ min-width:0!important;
+}
+.settings-clean .config-panel>.panel-head,
+.settings-clean .config-panel>.bank-stack,
+.settings-clean .config-panel>.category-add,
+.settings-clean .config-panel>.category-list,
+.settings-clean .config-panel>.brand-editor,
+.settings-clean .config-panel>.priority-config-list,
+.settings-clean .config-panel>.toggle-list,
+.settings-clean .config-panel>.config-grid{
+ width:100%!important;
+ max-width:100%!important;
+ min-width:0!important;
+ flex:none!important;
+}
+@media(max-width:850px){
+ .settings-clean .permissions-mobile{display:none!important}
+ .settings-clean .permissions-scroll{display:block!important;width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden;padding:0 12px 14px;-webkit-overflow-scrolling:touch}
+ .settings-clean .permissions-scroll table{display:table!important;width:860px!important;min-width:860px!important;max-width:none!important}
+ .settings-clean .permissions-scroll table *{max-width:none}
+ .settings-clean .role-permissions-panel .panel-head{width:100%!important}
+ .settings-clean .settlement-settings>.panel-head,
+ .settings-clean .category-settings>.panel-head,
+ .settings-clean .relationship-priority-settings>.panel-head{display:flex!important;flex-direction:column!important}
+}
