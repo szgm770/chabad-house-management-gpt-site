@@ -8060,3 +8060,94 @@ td:first-child {
  .settings-clean .category-settings>.panel-head,
  .settings-clean .relationship-priority-settings>.panel-head{display:flex!important;flex-direction:column!important}
 }
+
+
+/* Donor detail mobile containment and recurring status */
+.donor-overview > *,
+.people-section,
+.people-grid,
+.person-card,
+.detail-card,
+.overview-side {
+  min-width: 0;
+}
+.recurring-status-card {
+  border-color: #eadab7;
+  background: linear-gradient(145deg, #fffdf8, #fffaf0);
+}
+.recurring-status-card.is-active {
+  border-color: #bcdccc;
+  background: linear-gradient(145deg, #f9fdfb, #edf8f2);
+}
+.recurring-status-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 15px;
+}
+.recurring-status-head > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 13px;
+  background: #fff;
+  color: #976c18;
+  box-shadow: 0 4px 14px #173d320b;
+}
+.recurring-status-card.is-active .recurring-status-head > span { color: #1f694d; }
+.recurring-status-head svg { width: 20px; }
+.recurring-status-head small,
+.recurring-status-head h2,
+.recurring-status-line b,
+.recurring-status-line span { display: block; }
+.recurring-status-head small { color: #76827b; font-size: 13px; }
+.recurring-status-line {
+  padding: 12px 0;
+  border-top: 1px solid #dce9e2;
+}
+.recurring-status-line b { font-size: 17px; }
+.recurring-status-line span {
+  margin-top: 4px;
+  color: #69766f;
+  font-size: 13px;
+  line-height: 1.5;
+}
+@media (max-width: 650px) {
+  .donor-overview,
+  .people-section,
+  .overview-side,
+  .detail-card,
+  .person-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .detail-card-title {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .detail-card-title [data-slot="button"] {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+  .overview-stat-list > div { align-items: flex-start; }
+  .overview-stat-list span {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .overview-stat-list b {
+    flex: 0 1 48%;
+    max-width: 48%;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  .person-card-head > div,
+  .donor-info span,
+  .donor-info a {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
