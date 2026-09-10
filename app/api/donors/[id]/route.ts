@@ -6,6 +6,7 @@ import {
   donorCards,
   engagements,
   people,
+  recurringCommitments,
   specialDates,
 } from "@/db/schema";
 const idFrom = (request: Request) =>
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
         .limit(100);
       return Response.json({ engagements: rows }, { headers });
     }
-    const [[donor], persons, dates, statsRows, trend] = await Promise.all([
+    const [[donor], persons, dates, statsRows, trend, recurring] = await Promise.all([
       db.select().from(donorCards).where(eq(donorCards.id, id)).limit(1),
       db
         .select()
@@ -82,6 +83,11 @@ export async function GET(request: Request) {
         )
         .groupBy(sql`substr(${donations.date},1,7)`)
         .orderBy(sql`substr(${donations.date},1,7)`),
+      db
+        .select()
+        .from(recurringCommitments)
+        .where(eq(recurringCommitments.donorCardId, id))
+        .orderBy(desc(recurringCommitments.updatedAt), desc(recurringCommitments.id)),
     ]);
     if (!donor)
       return Response.json({ error: "כרטיס התורם לא נמצא" }, { status: 404 });
@@ -121,6 +127,7 @@ export async function GET(request: Request) {
         })),
         stats: statsRows[0],
         trend,
+        recurring,
       },
       { headers },
     );
