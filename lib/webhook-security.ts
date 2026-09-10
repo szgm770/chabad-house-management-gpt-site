@@ -1,4 +1,3 @@
-// Central webhook verification shared by all payment providers.
 const nedarimIps = new Set(["18.196.146.117", "18.194.219.73"]);
 
 function forwardedIp(request: Request) {
@@ -32,4 +31,22 @@ export async function readWebhookPayload(request: Request) {
     return Object.fromEntries(new URLSearchParams(await request.text()));
   }
   throw new Error("סוג נתונים לא נתמך");
+}
+
+export function normalizeNedarimPayload(payload: Record<string, unknown>) {
+  const normalized = Object.fromEntries(
+    Object.entries(payload).map(([key, value]) => [key.trim(), value == null ? "" : String(value).trim()]),
+  ) as Record<string, string>;
+
+  // Nedarim has sent both spellings in production. Keep one canonical key.
+  normalized.KevaId ||= normalized.Kevald || normalized.kevaid || normalized.kevald || "";
+  return normalized;
+}
+
+export function normalizeNedarimDateTime(value = "") {
+  const raw = value.trim();
+  const local = raw.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (!local) return raw || new Date().toISOString();
+  const [, day, month, year, hour = "00", minute = "00", second = "00"] = local;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${hour.padStart(2, "0")}:${minute}:${second}`;
 }
