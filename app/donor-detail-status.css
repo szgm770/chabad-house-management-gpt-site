@@ -1,0 +1,69 @@
+.donor-declines-card {
+  border-color: #ead7d2;
+  background: linear-gradient(145deg, #fffdfc, #fff8f6);
+}
+
+.donor-declines-card.all-handled {
+  border-color: #d8e5de;
+  background: #fbfdfc;
+}
+
+.donor-declines-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 13px;
+}
+
+.donor-declines-head > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 13px;
+  background: #fff;
+  color: #b44e3d;
+  box-shadow: 0 4px 14px #5d21150c;
+}
+
+.donor-declines-card.all-handled .donor-declines-head > span { color: #2d7659; }
+.donor-declines-head svg { width: 20px; }
+.donor-declines-head small,
+.donor-declines-head h2 { display: block; }
+.donor-declines-head small { color: #7b817e; font-size: 13px; }
+
+.donor-declines-list article {
+  padding: 12px 0;
+  border-top: 1px solid #eee2de;
+}
+
+.donor-declines-list article > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.donor-declines-list article b { font-size: 16px; }
+.donor-declines-list article span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.donor-declines-list article span.open { color: #9b382a; background: #fbe5e1; }
+.donor-declines-list article span.handled { color: #28684f; background: #e5f2eb; }
+.donor-declines-list article p {
+  margin-top: 7px;
+  color: #3e4944;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.donor-declines-list article small {
+  display: block;
+  margin-top: 5px;
+  color: #78837e;
+  font-size: 12px;
+}
