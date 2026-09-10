@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   ArrowRight,
+  AlertTriangle,
   CalendarHeart,
   Check,
   ChevronDown,
@@ -120,12 +121,22 @@ type RecurringCommitment = {
   status: string;
   updatedAt: string;
 };
+type PaymentDecline = {
+  id: number;
+  amount: number;
+  currency: string;
+  message: string;
+  declineSource: string;
+  occurredAt: string;
+  handled: boolean;
+};
 type Summary = {
   donor: Donor;
   people: Person[];
   stats: Stats;
   trend: Array<{ month: string; amount: number; count: number }>;
   recurring: RecurringCommitment[];
+  declines: PaymentDecline[];
 };
 type Tab = "overview" | "donations" | "engagements";
 const money = (value: number, currency = "ILS") =>
@@ -322,7 +333,7 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
       </main>
     );
   if (!data) return <DonorDetailSkeleton />;
-  const { donor, people, stats, trend, recurring = [] } = data,
+  const { donor, people, stats, trend, recurring = [], declines = [] } = data,
     legacy: Person = {
       id: 0,
       fullName: donor.name,
@@ -340,7 +351,8 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
     shownPeople = people.length ? people : [legacy],
     activeRecurring = recurring.filter((item) => item.status === "active"),
     lastStoppedRecurring = recurring.find((item) => item.status !== "active"),
-    hasActiveRecurring = activeRecurring.length > 0 || donor.recurringStatus === "ACTIVE";
+    hasActiveRecurring = activeRecurring.length > 0 || donor.recurringStatus === "ACTIVE",
+    openDeclines = declines.filter((item) => !item.handled);
   const closeDetail = () => {
     const fallback =
       new URLSearchParams(window.location.search).get("return") ||
@@ -497,6 +509,30 @@ export default function DonorDetail({ donorCardId }: { donorCardId: number }) {
                 <button className="detail-text-action" onClick={() => setRecurringOpen(true)}>
                   {activeRecurring.length ? "ניהול הוראת הקבע" : "הקמת הוראת קבע חדשה"}
                 </button>
+              </section>
+            )}
+            {declines.length > 0 && (
+              <section className={`detail-card donor-declines-card ${openDeclines.length ? "has-open" : "all-handled"}`}>
+                <div className="donor-declines-head">
+                  <span><AlertTriangle /></span>
+                  <div>
+                    <small>סירובי עסקאות</small>
+                    <h2>{openDeclines.length ? `${openDeclines.length} סירובים דורשים טיפול` : "כל הסירובים טופלו"}</h2>
+                  </div>
+                </div>
+                <div className="donor-declines-list">
+                  {declines.slice(0, 3).map((item) => (
+                    <article key={item.id}>
+                      <div>
+                        <b>{money(item.amount, item.currency || "ILS")}</b>
+                        <span className={item.handled ? "handled" : "open"}>{item.handled ? "טופל" : "דורש טיפול"}</span>
+                      </div>
+                      <p>{item.message || "העסקה נדחתה"}</p>
+                      <small>{civil(item.occurredAt)} · {item.declineSource === "Keva" ? "חיוב הוראת קבע" : "עסקה"}</small>
+                    </article>
+                  ))}
+                </div>
+                <a className="detail-text-action" href="/?view=attention">לכל הסירובים והטיפול בהם</a>
               </section>
             )}
             <section className="detail-card">
