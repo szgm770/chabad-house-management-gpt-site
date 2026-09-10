@@ -5,6 +5,7 @@ import {
   donations,
   donorCards,
   engagements,
+  paymentDeclines,
   people,
   recurringCommitments,
   specialDates,
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
         .limit(100);
       return Response.json({ engagements: rows }, { headers });
     }
-    const [[donor], persons, dates, statsRows, trend, recurring] = await Promise.all([
+    const [[donor], persons, dates, statsRows, trend, recurring, declineRows] = await Promise.all([
       db.select().from(donorCards).where(eq(donorCards.id, id)).limit(1),
       db
         .select()
@@ -88,6 +89,11 @@ export async function GET(request: Request) {
         .from(recurringCommitments)
         .where(eq(recurringCommitments.donorCardId, id))
         .orderBy(desc(recurringCommitments.updatedAt), desc(recurringCommitments.id)),
+      db
+        .select()
+        .from(paymentDeclines)
+        .orderBy(desc(paymentDeclines.occurredAt), desc(paymentDeclines.id))
+        .limit(500),
     ]);
     if (!donor)
       return Response.json({ error: "כרטיס התורם לא נמצא" }, { status: 404 });
@@ -111,6 +117,19 @@ export async function GET(request: Request) {
           (a, b) => linkedIds.indexOf(a.id) - linkedIds.indexOf(b.id),
         )
       : persons;
+    const cleanPhone = (value = "") => value.replace(/\D/g, "").replace(/^9720?/, "0"),
+      cleanId = (value = "") => value.replace(/\D/g, ""),
+      cleanEmail = (value = "") => value.trim().toLowerCase(),
+      phones = new Set([donor.phone, ...persons.map((person) => person.phone)].map(cleanPhone).filter(Boolean)),
+      ids = new Set([donor.idNumber, ...persons.map((person) => person.idNumber)].map(cleanId).filter(Boolean)),
+      emails = new Set([donor.email, ...persons.map((person) => person.email)].map(cleanEmail).filter(Boolean)),
+      recurringIds = new Set(recurring.map((item) => item.externalId).filter(Boolean)),
+      declines = declineRows.filter((item) =>
+        (!!item.recurringId && recurringIds.has(item.recurringId)) ||
+        (!!item.phone && phones.has(cleanPhone(item.phone))) ||
+        (!!item.idNumber && ids.has(cleanId(item.idNumber))) ||
+        (!!item.email && emails.has(cleanEmail(item.email))),
+      ).slice(0, 50);
     return Response.json(
       {
         donor: {
@@ -128,6 +147,7 @@ export async function GET(request: Request) {
         stats: statsRows[0],
         trend,
         recurring,
+        declines,
       },
       { headers },
     );
