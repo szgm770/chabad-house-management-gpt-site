@@ -5,7 +5,7 @@ import { CalendarClock,Check,ChevronDown,ExternalLink,Filter,Phone,Search,Target
 import { Button } from "@/components/ui/button";
 import { Dialog,DialogContent,DialogHeader,DialogTitle } from "@/components/ui/dialog";
 import { defaultRelationshipGroups,relationshipStatuses } from "./relationship-config";
-import { formatHebrewDate } from "./hebrew-date";
+import { formatCivilDate, formatHebrewDate } from "./hebrew-date";
 
 type Person={id:number;fullName:string;phone:string;email:string};
 type Group={key:string;label:string;rank:number|null;source:"automatic"|"manual";count?:number};
@@ -13,7 +13,7 @@ type Item={id:number;cardName:string;people:Person[];phone:string;relationshipGr
 type Payload={items:Item[];total:number;summary:Group[];config:Group[];campaigns:Array<{id:number;name:string}>};
 const money=(value:number)=>Number(value||0).toLocaleString("he-IL",{style:"currency",currency:"ILS",maximumFractionDigits:0});
 const statusLabel=(value:string)=>relationshipStatuses.find(x=>x[0]===value)?.[1]||value;
-const civil=(value:string)=>new Intl.DateTimeFormat("he-IL").format(new Date(`${value}T12:00:00`));
+const civil=formatCivilDate;
 
 export default function RetentionCenter(){
  const[items,setItems]=useState<Item[]>([]),[summary,setSummary]=useState<Group[]>(defaultRelationshipGroups),[config,setConfig]=useState<Group[]>(defaultRelationshipGroups),[campaigns,setCampaigns]=useState<Array<{id:number;name:string}>>([]),[total,setTotal]=useState(0),[loaded,setLoaded]=useState(false),[query,setQuery]=useState(""),[group,setGroup]=useState(""),[status,setStatus]=useState(""),[campaign,setCampaign]=useState(""),[sort,setSort]=useState("priority"),[recent,setRecent]=useState("365"),[page,setPage]=useState(1),[editing,setEditing]=useState<Item|null>(null),[logging,setLogging]=useState<Item|null>(null),[notice,setNotice]=useState("");
