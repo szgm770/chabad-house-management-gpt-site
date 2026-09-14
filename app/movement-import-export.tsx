@@ -38,7 +38,7 @@ export default function MovementImportExport({onImported}:{onImported:()=>void})
   }
   async function confirmImport(){
     if(!pending)return;
-    const chunkSize=25,totalChunks=Math.ceil(pending.rows.length/chunkSize),totals={imported:0,skipped:0,matched:0,created:0,review:0,duplicates:0},errors=new Map<string,number>();
+    const chunkSize=5,totalChunks=Math.ceil(pending.rows.length/chunkSize),totals={imported:0,skipped:0,matched:0,created:0,review:0,duplicates:0},errors=new Map<string,number>();
     setBusy(true);setMessage("");setProgress({processed:0,total:pending.rows.length,imported:0,skipped:0});
     try{
       for(let chunkIndex=0;chunkIndex<totalChunks;chunkIndex++){
