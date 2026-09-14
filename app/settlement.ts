@@ -1,5 +1,18 @@
 export type SettlementRule = { method: string; mode: "same" | "days" | "monthly" | "next_month" | "manual"; day: number };
 export const paymentMethods = ["אשראי", "ביט", "העברה בנקאית", "הוראת קבע בנקאית", "הוראת קבע", "מזומן", "צ׳ק", "פייבוקס"];
+export function normalizePaymentMethod(value: string) {
+  const raw = String(value || "").trim().toLowerCase().replace(/[׳'״\"]/g, "").replace(/[_–—-]+/g, " ").replace(/\s+/g, " ");
+  if (!raw) return "לא צוין אמצעי תשלום";
+  if (/credit|card|כרטיס/.test(raw) || raw.includes("אשראי")) return "אשראי";
+  if (/paybox|פייבוקס/.test(raw)) return "פייבוקס";
+  if (/^bit$/.test(raw) || raw.includes("ביט")) return "ביט";
+  if (raw.includes("הוראת קבע") && /בנק|bank/.test(raw)) return "הוראת קבע בנקאית";
+  if (raw.includes("הוראת קבע")) return "הוראת קבע";
+  if (/bank transfer|העברה בנקאית/.test(raw)) return "העברה בנקאית";
+  if (/cash|מזומן/.test(raw)) return "מזומן";
+  if (/cheque|check|צק/.test(raw)) return "צ׳ק";
+  return String(value || "").trim() || "לא צוין אמצעי תשלום";
+}
 export function rulesFromSettings(settings: Record<string, string>): SettlementRule[] {
   if (settings.settlement_rules) { try { return JSON.parse(settings.settlement_rules); } catch {} }
   // No assumed settlement dates: only migrate explicit existing configuration.
@@ -14,8 +27,8 @@ export function validDate(date: unknown): date is string {
 }
 export function expectedDate(date: string, method: string, rules: SettlementRule[]): string | null {
   if (!validDate(date)) return null;
-  const normalized = (v: string) => v.toLowerCase().replace(/[׳']/g, "").replace(/^bit$/, "ביט");
-  const rule = rules.find(r => normalized(r.method) === normalized(method));
+  const normalizedMethod = normalizePaymentMethod(method);
+  const rule = rules.find(r => normalizePaymentMethod(r.method) === normalizedMethod);
   if (!rule || rule.mode === "manual") return null;
   const d = new Date(date + "T12:00:00Z");
   if (rule.mode === "same") return date;
