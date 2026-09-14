@@ -47,6 +47,8 @@ type Donor = {
   specialDates?: DateRow[];
   specialDateCount?: number;
 };
+type DonorListSnapshot={records:Donor[];total:number;hasMore:boolean;savedAt:number};
+const donorListCache=new Map<string,DonorListSnapshot>();
 const templateHeaders = [
   "שם מלא",
   "כינוי",
@@ -151,13 +153,20 @@ export default function DonorCenter() {
   const [hasMore, setHasMore] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   async function load(offset = 0, search = query, order = sort) {
-    if (!offset) setLoading(true);
-    const r = await fetch(`/api/donors?view=list&limit=50&offset=${offset}&q=${encodeURIComponent(search)}&sort=${encodeURIComponent(order)}`, { cache: "no-store" });
+    const cacheKey=`${search}\u0000${order}`;
+    const cached=!offset?donorListCache.get(cacheKey):undefined;
+    if(cached&&Date.now()-cached.savedAt<120000){setRecords(cached.records);setTotal(cached.total);setHasMore(cached.hasMore);setLoading(false)}
+    else if (!offset) setLoading(true);
+    const r = await fetch(`/api/donors?view=list&limit=50&offset=${offset}&q=${encodeURIComponent(search)}&sort=${encodeURIComponent(order)}`, {
+      cache: "default",
+    });
     if (r.ok) {
       const j = await r.json();
-      setRecords((current) =>
-        offset ? [...current, ...(j.donors || [])] : j.donors || [],
-      );
+      setRecords((current) => {
+        const next=offset ? [...current, ...(j.donors || [])] : j.donors || [];
+        donorListCache.set(cacheKey,{records:next,total:Number(j.total||0),hasMore:!!j.hasMore,savedAt:Date.now()});
+        return next;
+      });
       setHasMore(!!j.hasMore);
       setTotal(Number(j.total || 0));
     }
@@ -177,6 +186,7 @@ export default function DonorCenter() {
       return;
     }
     setRecords(current => current.filter(item => item.id !== donor.id));
+    donorListCache.clear();
     setTotal(current => Math.max(0, current - 1));
     setNotice("כרטיס התורם הוסר והועבר לארכיון");
   }
@@ -271,6 +281,7 @@ export default function DonorCenter() {
     }
     setImportMessage(`הייבוא הושלם: ${j.added} נוספו, ${j.updated} עודכנו.`);
     setNotice("רשימת התורמים עודכנה בהצלחה");
+    donorListCache.clear();
     await load();
     event.target.value = "";
   }
