@@ -9,18 +9,24 @@ import {
   recurringCommitments,
   specialDates,
 } from "@/db/schema";
-import { repairDonorModel, syncDonorCardPeople } from "@/app/donor-model";
+import { syncDonorCardPeople } from "@/app/donor-model";
 import { normalizeSpecialDates, safeHebrewError, SpecialDateValidationError } from "@/app/special-date-validation";
-
-let repairPromise: Promise<unknown> | null = null;
 
 export async function GET(request: Request) {
   try {
     const db = getDb(),
       url = new URL(request.url),
       view = url.searchParams.get("view") || "list";
-    repairPromise ||= repairDonorModel(db);
-    await repairPromise;
+    // Full model repair is available from Settings > Data. It must not block
+    // every read of the donor list.
+    if (view === "dashboard") {
+      const active = and(ne(donorCards.status, "merged"), ne(donorCards.status, "archived"));
+      const [donors, countRows] = await Promise.all([
+        db.select({ id: donorCards.id, name: donorCards.cardName, status: donorCards.status, createdAt: donorCards.createdAt }).from(donorCards).where(active).orderBy(desc(donorCards.id)).limit(5),
+        db.select({ count: sql<number>`count(*)` }).from(donorCards).where(active),
+      ]);
+      return Response.json({ donors, total: countRows[0]?.count || 0 }, { headers: { "cache-control": "private, max-age=30, stale-while-revalidate=120" } });
+    }
     if (view === "options") {
       const donors = await db
         .select({ id: donorCards.id, name: donorCards.cardName })
@@ -29,11 +35,7 @@ export async function GET(request: Request) {
         .limit(500);
       return Response.json(
         { donors },
-        {
-          headers: {
-            "cache-control": "private, max-age=30, stale-while-revalidate=60",
-          },
-        },
+        { headers: { "cache-control": "private, max-age=30, stale-while-revalidate=120" } },
       );
     }
     const limit = Math.min(
@@ -119,11 +121,7 @@ export async function GET(request: Request) {
     });
     return Response.json(
       { donors: consistentDonors, total: countRows[0]?.count || 0, hasMore: offset + donors.length < (countRows[0]?.count || 0) },
-      {
-        headers: {
-          "cache-control": "private, max-age=15, stale-while-revalidate=45",
-        },
-      },
+      { headers: { "cache-control": "private, max-age=20, stale-while-revalidate=60" } },
     );
   } catch (e) {
     console.error("donors list failed", e);
