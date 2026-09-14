@@ -1,4 +1,4 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   appSettings,
@@ -121,25 +121,37 @@ export async function ingestMovement(p: MovementInput) {
         .where(eq(donorCards.id, Number(p.donorId)))
         .limit(1)
     : [];
-  const allDonors = explicit.length || (!idNumber && !phone && !email) ? [] : await db.select().from(donorCards).where(or(
+  const directDonors = explicit.length || (!idNumber && !phone && !email) ? [] : await db.select().from(donorCards).where(or(
     idNumber ? eq(donorCards.idNumber, idNumber) : eq(donorCards.id, -1),
     phone ? eq(donorCards.phone, phone) : eq(donorCards.id, -1),
     email ? eq(donorCards.email, email) : eq(donorCards.id, -1),
   )).limit(10);
+  const matchingPeople = explicit.length || (!idNumber && !phone && !email) ? [] : await db.select({donorCardId:people.donorCardId,idNumber:people.idNumber,phone:people.phone,email:people.email}).from(people).where(or(
+    idNumber ? eq(people.idNumber,idNumber) : eq(people.id,-1),
+    phone ? eq(people.phone,phone) : eq(people.id,-1),
+    email ? eq(people.email,email) : eq(people.id,-1),
+  )).limit(20);
+  const personCardIds=[...new Set(matchingPeople.map(person=>person.donorCardId).filter((value):value is number=>!!value))];
+  const personCardIdSet=new Set(personCardIds);
+  const personDonors=explicit.length||!personCardIds.length?[]:await db.select().from(donorCards).where(inArray(donorCards.id,personCardIds));
+  const allDonors=[...new Map([...directDonors,...personDonors].map(donor=>[donor.id,donor])).values()];
   const candidates = explicit.length
     ? explicit
     : allDonors.filter(
         (d) =>
           (idNumber && cleanId(d.idNumber) === idNumber) ||
           (phone && cleanPhone(d.phone) === phone) ||
-          (email && cleanEmail(d.email) === email),
+          (email && cleanEmail(d.email) === email) ||
+          personCardIdSet.has(d.id),
       );
   let donor = candidates.length === 1 ? candidates[0] : undefined;
   let donorAction = "matched";
   let matchReason = explicit.length ? "שיוך ישיר לכרטיס שנבחר" : "";
   if (donor && !explicit.length) {
     matchReason =
-      idNumber && donor.idNumber === idNumber
+      personCardIdSet.has(donor.id)
+        ? "התאמה ודאית לפי פרטי אדם המשויך לכרטיס"
+        : idNumber && donor.idNumber === idNumber
         ? "התאמה ודאית לפי ת״ז"
         : phone && donor.phone === phone
           ? "התאמה ודאית לפי טלפון"
@@ -153,16 +165,13 @@ export async function ingestMovement(p: MovementInput) {
       .from(donorCards)
       .where(eq(donorCards.cardName, name))
       .limit(2);
-    if (
-      exactName.length === 1 &&
-      p.source === "manual" &&
-      !idNumber &&
-      !phone &&
-      !email
-    ) {
+    if (exactName.length === 1 && ["manual","file"].includes(p.source || "manual") && !idNumber && !phone && !email) {
       donor = exactName[0];
       donorAction = "matched";
-      matchReason = "בחירה ידנית של כרטיס תורם קיים";
+      matchReason = p.source === "file" ? "התאמה יחידה לפי שם בייבוא" : "בחירה ידנית של כרטיס תורם קיים";
+    } else if (exactName.length > 0 && p.source === "file" && !idNumber && !phone && !email) {
+      donorAction = "review";
+      matchReason = "נמצאו כמה כרטיסים בשם זה; נדרשת בדיקת התאמה";
     } else if (exactName.length === 1 && (idNumber || phone || email)) {
       donor = exactName[0];
       donorAction = "review";
