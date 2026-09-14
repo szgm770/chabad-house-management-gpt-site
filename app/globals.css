@@ -8151,3 +8151,6 @@ td:first-child {
     max-width: 100%;
   }
 }
+
+.attention-settlement-dialog{max-width:680px;width:min(92vw,680px);max-height:86vh;overflow:auto}.settlement-missing-list{display:grid;gap:8px;margin:18px 0;max-height:52vh;overflow:auto}.settlement-missing-list article{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card)}.settlement-missing-list span{display:grid;gap:3px}.settlement-missing-list small{color:var(--muted-foreground)}
+@media(max-width:640px){.attention-settlement-dialog{width:calc(100vw - 24px);padding:20px 14px}.settlement-missing-list article{align-items:flex-start}.settlement-missing-list strong{white-space:nowrap}}
