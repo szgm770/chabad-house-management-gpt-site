@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { getDb } from "@/db";
 import { appSettings, auditLog, donations, importRuns } from "@/db/schema";
 import { ingestMovement, type MovementInput } from "@/app/api/movements/ingest";
@@ -17,10 +17,29 @@ async function requireManager(){
   }catch{return false}
 }
 
+const isMovementImport=(source:string)=>{
+  const normalized=source.trim().toLowerCase();
+  return normalized!=="donors-file"&&normalized!=="donors";
+};
+
 export async function GET(){
   try{
     if(!await requireManager())return Response.json({error:"הפעולה זמינה למנהל המערכת בלבד"},{status:403});
-    const runs=await getDb().select().from(importRuns).where(inArray(importRuns.source,["movements-file","file","csv"])).orderBy(desc(importRuns.id)).limit(100);
+    const db=getDb();
+    const [allRuns,importedMovements]=await Promise.all([
+      db.select().from(importRuns).orderBy(desc(importRuns.id)).limit(300),
+      db.select({fingerprint:donations.importFingerprint,createdAt:donations.createdAt}).from(donations).where(isNotNull(donations.importFingerprint)),
+    ]);
+    const known=new Set(allRuns.map(run=>run.fingerprint));
+    const missing=new Map<string,{count:number;createdAt:string}>();
+    for(const movement of importedMovements){
+      const fingerprint=movement.fingerprint;
+      if(!fingerprint||known.has(fingerprint))continue;
+      const current=missing.get(fingerprint)||{count:0,createdAt:movement.createdAt};
+      current.count++;if(movement.createdAt<current.createdAt)current.createdAt=movement.createdAt;missing.set(fingerprint,current);
+    }
+    for(const [fingerprint,group] of missing)await db.insert(importRuns).values({source:"movements-file",filename:`ייבוא תנועות ששוחזר · ${group.createdAt.slice(0,10)}`,fingerprint,rowsTotal:group.count,rowsImported:group.count,rowsSkipped:0,createdAt:group.createdAt}).onConflictDoNothing();
+    const runs=(missing.size?await db.select().from(importRuns).orderBy(desc(importRuns.id)).limit(300):allRuns).filter(run=>isMovementImport(run.source)).slice(0,100);
     return Response.json({runs});
   }catch(error){return Response.json({error:error instanceof Error?error.message:"לא ניתן לטעון את היסטוריית הייבוא"},{status:500})}
 }
@@ -72,8 +91,8 @@ export async function DELETE(request:Request){
     const body=await request.json() as {id?:number};
     if(!body.id)return Response.json({error:"לא נבחר גל ייבוא"},{status:400});
     const db=getDb();
-    const runs=await db.select().from(importRuns).where(and(eq(importRuns.id,Number(body.id)),inArray(importRuns.source,["movements-file","file","csv"]))).limit(1);
-    if(!runs.length)return Response.json({error:"גל הייבוא לא נמצא"},{status:404});
+    const runs=await db.select().from(importRuns).where(eq(importRuns.id,Number(body.id))).limit(1);
+    if(!runs.length||!isMovementImport(runs[0].source))return Response.json({error:"גל הייבוא לא נמצא"},{status:404});
     const run=runs[0];
     const movements=await db.select({id:donations.id}).from(donations).where(eq(donations.importFingerprint,run.fingerprint));
     const ids=movements.map(item=>String(item.id));
