@@ -4,7 +4,7 @@ import { appSettings, auditLog, donations, importRuns } from "@/db/schema";
 import { ingestMovement, type MovementInput } from "@/app/api/movements/ingest";
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 
-type Body={filename?:string;fingerprint?:string;rows?:MovementInput[]};
+type Body={filename?:string;fingerprint?:string;rows?:MovementInput[];chunkIndex?:number;totalChunks?:number;totalRows?:number};
 type AccessUser={email?:string;role?:string;status?:string};
 
 async function requireManager(){
@@ -31,8 +31,16 @@ export async function POST(request:Request){
     if(!body.filename||!body.fingerprint||!Array.isArray(body.rows))return Response.json({error:"קובץ הייבוא אינו תקין"},{status:400});
     const db=getDb();
     const previous=await db.select().from(importRuns).where(eq(importRuns.fingerprint,body.fingerprint)).limit(1);
-    if(previous.length&&previous[0].rowsImported>0)return Response.json({error:"הקובץ הזה כבר יובא בעבר",duplicate:true},{status:409});
-    if(previous.length)await db.delete(importRuns).where(eq(importRuns.id,previous[0].id));
+    const chunked=Number.isInteger(body.chunkIndex)&&Number.isInteger(body.totalChunks)&&Number(body.totalChunks)>0;
+    const chunkIndex=chunked?Number(body.chunkIndex):0;
+    const totalRows=chunked?Math.max(Number(body.totalRows)||body.rows.length,body.rows.length):body.rows.length;
+    if(chunked&&chunkIndex>0&&!previous.length)return Response.json({error:"רצף הייבוא הופסק. יש להתחיל את הייבוא מחדש"},{status:409});
+    if(previous.length&&(!chunked||chunkIndex===0)){
+      const completed=previous[0].rowsTotal>0&&previous[0].rowsImported+previous[0].rowsSkipped>=previous[0].rowsTotal;
+      if(completed&&previous[0].rowsImported>0)return Response.json({error:"הקובץ הזה כבר יובא בעבר",duplicate:true},{status:409});
+      await db.delete(donations).where(eq(donations.importFingerprint,body.fingerprint));
+      await db.delete(importRuns).where(eq(importRuns.id,previous[0].id));
+    }
     let imported=0,skipped=0,matched=0,created=0,review=0,duplicates=0;
     const errors:Record<string,number>={};
     for(const row of body.rows.slice(0,5000)){
@@ -47,7 +55,12 @@ export async function POST(request:Request){
         errors[reason]=(errors[reason]||0)+1;
       }
     }
-    await db.insert(importRuns).values({source:"movements-file",filename:body.filename,fingerprint:body.fingerprint,rowsTotal:body.rows.length,rowsImported:imported,rowsSkipped:skipped});
+    if(chunked&&chunkIndex>0){
+      const current=(await db.select().from(importRuns).where(eq(importRuns.fingerprint,body.fingerprint)).limit(1))[0];
+      await db.update(importRuns).set({rowsImported:(current?.rowsImported||0)+imported,rowsSkipped:(current?.rowsSkipped||0)+skipped+duplicates}).where(eq(importRuns.fingerprint,body.fingerprint));
+    }else{
+      await db.insert(importRuns).values({source:"movements-file",filename:body.filename,fingerprint:body.fingerprint,rowsTotal:totalRows,rowsImported:imported,rowsSkipped:skipped+duplicates});
+    }
     return Response.json({imported,skipped,matched,created,review,duplicates,errors:Object.entries(errors).map(([reason,count])=>({reason,count}))});
   }catch(error){return Response.json({error:error instanceof Error?error.message:"שגיאה"},{status:500})}
 }
