@@ -1,18 +1,32 @@
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { attentionItems, auditLog, paymentDeclines } from "@/db/schema";
+import { attentionItems, auditLog, paymentDeclines, donations, appSettings } from "@/db/schema";
 import { refreshAttentionItems } from "@/app/attention-engine";
+import { expectedDate, normalizePaymentMethod, rulesFromSettings } from "@/app/settlement";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const db = getDb();
     await refreshAttentionItems(db);
-    const [items, declines] = await Promise.all([
+    const [items, declines, movementRows, settingRows] = await Promise.all([
       db.select().from(attentionItems).orderBy(desc(attentionItems.createdAt)).limit(300),
       db.select().from(paymentDeclines).orderBy(desc(paymentDeclines.occurredAt)).limit(200),
+      db.select().from(donations).where(eq(donations.movementType, "donation")),
+      db.select().from(appSettings),
     ]);
+    const settings = Object.fromEntries(settingRows.map(row => [row.key, row.value]));
+    const rules = rulesFromSettings(settings);
+    const missing = movementRows.filter(row => !row.expectedSettlementDate && !row.actualSettlementDate && !expectedDate(row.date, row.paymentMethod, rules));
+    const requestedMethod = new URL(request.url).searchParams.get("paymentMethod");
+    if (requestedMethod) return Response.json({ transactions: missing.filter(row => normalizePaymentMethod(row.paymentMethod) === requestedMethod).map(row => ({ id: row.id, donorId: row.donorId, donorName: row.donorName, amount: row.amount, currency: row.currency, date: row.date, paymentMethod: row.paymentMethod })) });
+    const groups = new Map<string, { count: number; amount: number; currency: string }>();
+    for (const row of missing) {
+      const method = normalizePaymentMethod(row.paymentMethod), current = groups.get(method) || { count: 0, amount: 0, currency: row.currency };
+      current.count += 1; current.amount += row.amount; groups.set(method, current);
+    }
     return Response.json({
       items: [
+        ...Array.from(groups, ([method, group]) => ({ id: `settlement:${method}`, kind: "missing_settlement_rule", entityType: "payment_method", entityId: method, paymentMethod: method, donorCardId: null, personId: null, title: `לא הוגדר מועד זיכוי ל״${method}״`, detail: `${group.count} תנועות · ${new Intl.NumberFormat("he-IL", { style: "currency", currency: group.currency }).format(group.amount)}`, priority: "high", dueDate: null, status: "open", createdAt: null })),
         ...declines.map((row) => ({
           id: `decline:${row.id}`,
           kind: "payment_decline",
