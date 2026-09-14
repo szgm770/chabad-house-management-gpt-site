@@ -20,7 +20,7 @@ async function requireManager(){
 export async function GET(){
   try{
     if(!await requireManager())return Response.json({error:"הפעולה זמינה למנהל המערכת בלבד"},{status:403});
-    const runs=await getDb().select().from(importRuns).where(eq(importRuns.source,"movements-file")).orderBy(desc(importRuns.id)).limit(100);
+    const runs=await getDb().select().from(importRuns).where(inArray(importRuns.source,["movements-file","file","csv"])).orderBy(desc(importRuns.id)).limit(100);
     return Response.json({runs});
   }catch(error){return Response.json({error:error instanceof Error?error.message:"לא ניתן לטעון את היסטוריית הייבוא"},{status:500})}
 }
@@ -41,6 +41,7 @@ export async function POST(request:Request){
       await db.delete(donations).where(eq(donations.importFingerprint,body.fingerprint));
       await db.delete(importRuns).where(eq(importRuns.id,previous[0].id));
     }
+    if(chunked&&chunkIndex===0)await db.insert(importRuns).values({source:"movements-file",filename:body.filename,fingerprint:body.fingerprint,rowsTotal:totalRows,rowsImported:0,rowsSkipped:0});
     let imported=0,skipped=0,matched=0,created=0,review=0,duplicates=0;
     const errors:Record<string,number>={};
     for(const row of body.rows.slice(0,5000)){
@@ -55,7 +56,7 @@ export async function POST(request:Request){
         errors[reason]=(errors[reason]||0)+1;
       }
     }
-    if(chunked&&chunkIndex>0){
+    if(chunked){
       const current=(await db.select().from(importRuns).where(eq(importRuns.fingerprint,body.fingerprint)).limit(1))[0];
       await db.update(importRuns).set({rowsImported:(current?.rowsImported||0)+imported,rowsSkipped:(current?.rowsSkipped||0)+skipped+duplicates}).where(eq(importRuns.fingerprint,body.fingerprint));
     }else{
@@ -71,7 +72,7 @@ export async function DELETE(request:Request){
     const body=await request.json() as {id?:number};
     if(!body.id)return Response.json({error:"לא נבחר גל ייבוא"},{status:400});
     const db=getDb();
-    const runs=await db.select().from(importRuns).where(and(eq(importRuns.id,Number(body.id)),eq(importRuns.source,"movements-file"))).limit(1);
+    const runs=await db.select().from(importRuns).where(and(eq(importRuns.id,Number(body.id)),inArray(importRuns.source,["movements-file","file","csv"]))).limit(1);
     if(!runs.length)return Response.json({error:"גל הייבוא לא נמצא"},{status:404});
     const run=runs[0];
     const movements=await db.select({id:donations.id}).from(donations).where(eq(donations.importFingerprint,run.fingerprint));
