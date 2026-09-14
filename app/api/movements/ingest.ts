@@ -32,6 +32,7 @@ export type MovementInput = {
   subcategory?: string;
   isRecurring?: boolean;
   rawPayload?: unknown;
+  importFingerprint?: string;
 };
 
 const safePayload = (value: unknown) => {
@@ -47,10 +48,12 @@ const cleanName = (v = "") => v.trim().replace(/\s+/g, " ");
 
 export async function ingestMovement(p: MovementInput) {
   const db = getDb();
-  const name = cleanName(p.donorName || p.name);
-  const amount = Number(p.amount);
+  const suppliedName = cleanName(p.donorName || p.name);
+  const name = suppliedName || "ללא שם";
+  const amount = typeof p.amount === "number" ? p.amount : Number(String(p.amount ?? "").replace(/[₪$€£,\s]/g, ""));
+  const movementDate = p.date?.trim() || new Date().toISOString().slice(0, 10);
   const movementType = p.movementType || "donation";
-  if (!name || !amount || !p.date) throw new Error("חסרים פרטי חובה");
+  if (!Number.isFinite(amount) || amount === 0) throw new Error("סכום חסר או לא תקין");
   if (p.externalId) {
     const existing = await db
       .select()
@@ -85,7 +88,7 @@ export async function ingestMovement(p: MovementInput) {
       .values({
         donorName: name,
         amount,
-        date: p.date!,
+        date: movementDate,
         paymentMethod: p.paymentMethod || "לא צוין",
         purpose: p.purpose || "",
         reason: p.reason || "",
@@ -100,6 +103,7 @@ export async function ingestMovement(p: MovementInput) {
         subcategory: p.subcategory || "",
         isRecurring: !!p.isRecurring,
         rawPayload: JSON.stringify(safePayload(p.rawPayload)),
+        importFingerprint: p.importFingerprint || null,
       })
       .returning();
     await db.insert(auditLog).values({
@@ -113,6 +117,39 @@ export async function ingestMovement(p: MovementInput) {
       donorAction: "not_applicable",
       matchReason: "הוצאה אינה משויכת לתורם",
     };
+  }
+  if (!suppliedName) {
+    const [movement] = await db.insert(donations).values({
+      donorId: null,
+      personId: null,
+      donorName: name,
+      amount,
+      date: movementDate,
+      paymentMethod: p.paymentMethod || "לא צוין",
+      purpose: p.purpose || "",
+      reason: p.reason || "",
+      source: p.source || "manual",
+      externalId: p.externalId || null,
+      currency: p.currency || "ILS",
+      feePercentage: calculated.rate,
+      feeAmount: calculated.fee,
+      netAmount: calculated.net,
+      movementType,
+      matchStatus: "review",
+      matchReason: "שם התורם חסר בקובץ הייבוא",
+      department: p.department || "",
+      subcategory: p.subcategory || "",
+      isRecurring: !!p.isRecurring,
+      rawPayload: JSON.stringify(safePayload(p.rawPayload)),
+      importFingerprint: p.importFingerprint || null,
+    }).returning();
+    await db.insert(auditLog).values({
+      action: "movement_ingested",
+      entityType: "movement",
+      entityId: String(movement.id),
+      details: JSON.stringify({ donorAction: "review", matchReason: "שם התורם חסר בקובץ הייבוא", source: p.source || "manual" }),
+    });
+    return { movement, donorAction: "review", matchReason: "שם התורם חסר בקובץ הייבוא" };
   }
   const explicit = p.donorId
     ? await db
@@ -216,7 +253,7 @@ export async function ingestMovement(p: MovementInput) {
       personId: resolvedPersonId,
       donorName: donorAction === "review" ? name : donor?.cardName || name,
       amount,
-      date: p.date!,
+      date: movementDate,
       paymentMethod: p.paymentMethod || "לא צוין",
       purpose: p.purpose || "",
       reason: p.reason || "",
@@ -233,6 +270,7 @@ export async function ingestMovement(p: MovementInput) {
       subcategory: p.subcategory || "",
       isRecurring: !!p.isRecurring,
       rawPayload: JSON.stringify(safePayload(p.rawPayload)),
+      importFingerprint: p.importFingerprint || null,
     })
     .returning();
   await db.insert(auditLog).values({
