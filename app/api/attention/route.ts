@@ -2,7 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { attentionItems, auditLog, paymentDeclines, donations, appSettings } from "@/db/schema";
 import { refreshAttentionItems } from "@/app/attention-engine";
-import { expectedDate, normalizePaymentMethod, rulesFromSettings } from "@/app/settlement";
+import { expectedDate, normalizePaymentMethod, normalizeSettlementDate, rulesFromSettings, settlementRuleFor } from "@/app/settlement";
 
 export async function GET(request: Request) {
   try {
@@ -19,14 +19,14 @@ export async function GET(request: Request) {
     const missing = movementRows.filter(row => !row.expectedSettlementDate && !row.actualSettlementDate && !expectedDate(row.date, row.paymentMethod, rules));
     const requestedMethod = new URL(request.url).searchParams.get("paymentMethod");
     if (requestedMethod) return Response.json({ transactions: missing.filter(row => normalizePaymentMethod(row.paymentMethod) === requestedMethod).map(row => ({ id: row.id, donorId: row.donorId, donorName: row.donorName, amount: row.amount, currency: row.currency, date: row.date, paymentMethod: row.paymentMethod })) });
-    const groups = new Map<string, { count: number; amount: number; currency: string }>();
+    const groups = new Map<string, { count: number; amount: number; currency: string; issue:"rule"|"manual"|"date" }>();
     for (const row of missing) {
-      const method = normalizePaymentMethod(row.paymentMethod), current = groups.get(method) || { count: 0, amount: 0, currency: row.currency };
-      current.count += 1; current.amount += row.amount; groups.set(method, current);
+      const method = normalizePaymentMethod(row.paymentMethod),rule=settlementRuleFor(row.paymentMethod,rules),issue=!normalizeSettlementDate(row.date)?"date":rule?.mode==="manual"?"manual":"rule",key=`${issue}:${method}`,current = groups.get(key) || { count: 0, amount: 0, currency: row.currency,issue };
+      current.count += 1; current.amount += row.amount; groups.set(key, current);
     }
     return Response.json({
       items: [
-        ...Array.from(groups, ([method, group]) => ({ id: `settlement:${method}`, kind: "missing_settlement_rule", entityType: "payment_method", entityId: method, paymentMethod: method, donorCardId: null, personId: null, title: `לא הוגדר מועד זיכוי ל״${method}״`, detail: `${group.count} תנועות · ${new Intl.NumberFormat("he-IL", { style: "currency", currency: group.currency }).format(group.amount)}`, priority: "high", dueDate: null, status: "open", createdAt: null })),
+        ...Array.from(groups, ([key, group]) => {const method=key.slice(key.indexOf(":")+1),title=group.issue==="date"?`תאריך התנועה אינו תקין ב״${method}״`:group.issue==="manual"?`נדרש מועד זיכוי ידני ל״${method}״`:`לא הוגדר מועד זיכוי ל״${method}״`;return { id: `settlement:${key}`, kind: group.issue==="rule"?"missing_settlement_rule":"missing_settlement_date", settlementIssue:group.issue, entityType: "payment_method", entityId: method, paymentMethod: method, donorCardId: null, personId: null, title, detail: `${group.count} תנועות · ${new Intl.NumberFormat("he-IL", { style: "currency", currency: group.currency }).format(group.amount)}`, priority: "high", dueDate: null, status: "open", createdAt: null }}),
         ...declines.map((row) => ({
           id: `decline:${row.id}`,
           kind: "payment_decline",
