@@ -22,16 +22,32 @@ export function rulesFromSettings(settings: Record<string, string>): SettlementR
     return { method, mode: key && day >= 1 && day <= 31 ? "monthly" : "manual", day: day || 1 };
   });
 }
+export function settlementRuleFor(method: string, rules: SettlementRule[]) {
+  const normalizedMethod = normalizePaymentMethod(method);
+  return rules.find(rule => normalizePaymentMethod(rule.method) === normalizedMethod) || null;
+}
+export function normalizeSettlementDate(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const text=value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text) && !isNaN(Date.parse(text))) return text;
+  const iso=text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/);
+  if(iso){const candidate=`${iso[1]}-${iso[2].padStart(2,"0")}-${iso[3].padStart(2,"0")}`;return validDate(candidate)?candidate:null}
+  const local=text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if(local){const candidate=`${local[3]}-${local[2].padStart(2,"0")}-${local[1].padStart(2,"0")}`;return validDate(candidate)?candidate:null}
+  const serial=Number(text);
+  if(Number.isFinite(serial)&&serial>20000&&serial<100000)return new Date(Date.UTC(1899,11,30)+serial*86400000).toISOString().slice(0,10);
+  return null;
+}
 export function validDate(date: unknown): date is string {
   return typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && !isNaN(Date.parse(date)) && new Date(date).toISOString().slice(0,10) === date;
 }
 export function expectedDate(date: string, method: string, rules: SettlementRule[]): string | null {
-  if (!validDate(date)) return null;
-  const normalizedMethod = normalizePaymentMethod(method);
-  const rule = rules.find(r => normalizePaymentMethod(r.method) === normalizedMethod);
+  const normalizedDate=normalizeSettlementDate(date);
+  if (!normalizedDate) return null;
+  const rule = settlementRuleFor(method,rules);
   if (!rule || rule.mode === "manual") return null;
-  const d = new Date(date + "T12:00:00Z");
-  if (rule.mode === "same") return date;
+  const d = new Date(normalizedDate + "T12:00:00Z");
+  if (rule.mode === "same") return normalizedDate;
   if (rule.mode === "days") d.setUTCDate(d.getUTCDate() + rule.day);
   else {
     const target = (offset: number) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+offset, Math.min(rule.day, new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+offset+1,0)).getUTCDate()),12));
@@ -55,7 +71,7 @@ export function monthlyBankSummary(rows: BankTransaction[], rules: SettlementRul
   const result = { gross:0, planned:0, actual:0, pending:0, overdue:0, unplanned:0 };
   for (const row of rows) {
     const s = settlementFor(row,rules,today), net = Math.round((row.amount-(row.feeAmount||0))*100)/100;
-    if (row.date.startsWith(month)) result.gross += row.amount;
+    if (normalizeSettlementDate(row.date)?.startsWith(month)) result.gross += row.amount;
     if (s.expected?.startsWith(month)) { result.planned += net; if (!s.actual) { result.pending += net; if (s.expected < today) result.overdue += net; } }
     if (s.actual?.startsWith(month)) result.actual += net;
     if (!s.expected && !s.actual) result.unplanned += net;
@@ -66,6 +82,7 @@ export function monthlyBankSummary(rows: BankTransaction[], rules: SettlementRul
 export type FinancePeriod = "month" | "year" | "all";
 export function periodContains(date: string | null | undefined, period: FinancePeriod, anchor: string) {
   if (!date) return false;
+  date=normalizeSettlementDate(date)||date;
   if (period === "all") return true;
   return date.startsWith(period === "year" ? anchor.slice(0, 4) : anchor.slice(0, 7));
 }
